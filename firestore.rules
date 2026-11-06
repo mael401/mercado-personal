@@ -86,7 +86,8 @@ service cloud.firestore {
         && request.resource.data.total is number
         && request.resource.data.total >= 0
         && request.resource.data.tasaUSD == get(/databases/$(database)/documents/configuracion/tasaUSD).data.valor
-        && request.resource.data.totalUSD is number\n        && request.resource.data.totalUSD == request.resource.data.total / request.resource.data.tasaUSD
+        && request.resource.data.totalUSD is number
+        && request.resource.data.totalUSD == request.resource.data.total / request.resource.data.tasaUSD
         && request.resource.data.tipoEntrega == 'domicilio'
         && request.resource.data.keys().hasOnly([
           'clienteId', 'clienteNombre', 'telefono', 'direccion', 'items', 'total', 'estado', 'fecha', 'tasaUSD', 'totalUSD', 'tipoEntrega'
