@@ -9,7 +9,7 @@ public class Pedido {
     public static class Linea {
         public String nombre;
         public double precio;
-        public long cantidad;
+        public double cantidad;
     }
 
     public String id, clienteNombre, telefono, direccion, estado, repartidorId, repartidorNombre;
