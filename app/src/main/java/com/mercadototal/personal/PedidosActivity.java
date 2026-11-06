@@ -79,7 +79,9 @@ public class PedidosActivity extends AppCompatActivity {
         toolbar.inflateMenu(R.menu.menu_personal);
         toolbar.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
-            if (id == R.id.accion_productos) { startActivity(new Intent(this, ProductosActivity.class)); return true; }\n            if (id == R.id.accion_usuarios && esAdmin) { startActivity(new Intent(this, UsuariosActivity.class)); return true; }\n            if (id == R.id.accion_clave) {
+            if (id == R.id.accion_productos) { startActivity(new Intent(this, ProductosActivity.class)); return true; }
+            if (id == R.id.accion_usuarios && esAdmin) { startActivity(new Intent(this, UsuariosActivity.class)); return true; }
+            if (id == R.id.accion_clave) {
                 Cuenta.cambiarPassword(this);
                 return true;
             }
