@@ -52,12 +52,12 @@ service cloud.firestore {
         && request.resource.data.nombre is string
         && request.resource.data.precio is number
         && request.resource.data.precio >= 0
-        && request.resource.data.existencia is int
-        && request.resource.data.existencia >= 0;
+        && request.resource.data.existencia is number
+        && request.resource.data.existencia >= 0\n        && request.resource.data.get('tipoExistencia', 'unidad') in ['unidad', 'peso'];
       allow update: if esAdmin() || (
         esAlmacenero()
         && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['nombre', 'categoria', 'precio', 'existencia', 'activo', 'foto'])
+          .hasOnly(['nombre', 'categoria', 'precio', 'existencia', 'activo', 'foto', 'tipoExistencia', 'unidadMedida'])
         && request.resource.data.precio is number
         && request.resource.data.precio >= 0
         && request.resource.data.existencia is int
@@ -66,7 +66,7 @@ service cloud.firestore {
       allow delete: if esAdmin();
     }
 
-    match /pedidos/{id} {
+    match /configuracion/{id} {\n      allow read: if activo();\n      allow create, update: if esAdmin() && id == 'tasaUSD'\n        && request.resource.data.valor is number\n        && request.resource.data.valor > 0\n        && request.resource.data.actualizadoPor == request.auth.uid;\n      allow delete: if false;\n    }\n\n    match /pedidos/{id} {
       allow create: if esCliente()
         && request.resource.data.clienteId == request.auth.uid
         && request.resource.data.estado == 'pendiente'
@@ -76,7 +76,7 @@ service cloud.firestore {
         && request.resource.data.total is number
         && request.resource.data.total >= 0
         && request.resource.data.keys().hasOnly([
-          'clienteId', 'clienteNombre', 'telefono', 'direccion', 'items', 'total', 'estado', 'fecha'
+          'clienteId', 'clienteNombre', 'telefono', 'direccion', 'items', 'total', 'estado', 'fecha', 'tasaUSD', 'totalUSD', 'tipoEntrega'
         ]);
 
       allow read: if activo() && (
