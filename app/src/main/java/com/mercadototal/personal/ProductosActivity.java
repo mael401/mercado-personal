@@ -1,0 +1,35 @@
+package com.mercadototal.personal;
+
+import android.os.Bundle;
+import android.text.InputType;
+import android.view.View;
+import android.widget.*;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import com.google.android.material.appbar.MaterialToolbar;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.*;
+import java.util.*;
+
+public class ProductosActivity extends AppCompatActivity {
+ private FirebaseFirestore db; private String rol=""; private LinearLayout lista; private EditText nombre,precio,existencia,categoria,unidad,foto; private Spinner tipo;
+ private final List<String> ids=new ArrayList<>();
+ @Override protected void onCreate(Bundle b){super.onCreate(b);db=FirebaseFirestore.getInstance();LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(16,8,16,8);root.setBackgroundColor(0xFFF4F7F5);setContentView(root);
+ MaterialToolbar bar=new MaterialToolbar(this);bar.setTitle("Gestión de productos");bar.setNavigationIcon(android.R.drawable.ic_media_previous);bar.setNavigationOnClickListener(v->finish());root.addView(bar);
+ Button add=new Button(this);add.setText("Añadir producto");root.addView(add);lista=new LinearLayout(this);lista.setOrientation(LinearLayout.VERTICAL);ScrollView sc=new ScrollView(this);sc.addView(lista);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
+ add.setOnClickListener(v->editar(null,null));
+ db.collection("users").document(FirebaseAuth.getInstance().getUid()).get().addOnSuccessListener(d->{rol=d.getString("rol");if(!"admin".equals(rol)&&!"almacenero".equals(rol)){finish();return;}cargar();});
+ }
+ private EditText campo(String hint,int input){EditText e=new EditText(this);e.setSingleLine(true);e.setHint(hint);e.setInputType(input);return e;}
+ private void cargar(){db.collection("productos").whereEqualTo("activo",true).get().addOnSuccessListener(q->{lista.removeAllViews();ids.clear();for(DocumentSnapshot d:q){ids.add(d.getId());LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.VERTICAL);row.setPadding(12,10,12,10);TextView t=new TextView(this);t.setText(d.getString("nombre")+"  ·  "+d.get("precio")+" CUP / "+d.getString("unidadMedida")+"  ·  stock "+d.get("existencia"));row.addView(t);Button edit=new Button(this);edit.setText("Editar");edit.setOnClickListener(v->editar(d.getId(),d.getData()));row.addView(edit);Button del=new Button(this);del.setText("Desactivar");del.setOnClickListener(v->new AlertDialog.Builder(this).setMessage("¿Desactivar este producto? No se borrará del historial.").setPositiveButton("Sí",(a,w)->db.collection("productos").document(d.getId()).update("activo",false).addOnSuccessListener(x->cargar())).setNegativeButton("No",null).show());row.addView(del);lista.addView(row);View line=new View(this);line.setBackgroundColor(0xFFCCCCCC);lista.addView(line,new LinearLayout.LayoutParams(-1,1));}}).addOnFailureListener(e->toast(e.getMessage()));}
+ private void editar(String id,Map<String,Object> data){
+  LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(20,0,20,0);
+  nombre=campo("Nombre",InputType.TYPE_CLASS_TEXT);categoria=campo("Categoría",InputType.TYPE_CLASS_TEXT);precio=campo("Precio en CUP",InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);existencia=campo("Existencia (kg/unidades)",InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);unidad=campo("Unidad (kg, g, unidad...)",InputType.TYPE_CLASS_TEXT);foto=campo("Foto Base64 (opcional)",InputType.TYPE_CLASS_TEXT);
+  tipo=new Spinner(this);tipo.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"unidad","peso"}));
+  for(EditText e:new EditText[]{nombre,categoria,precio,existencia,unidad,foto})box.addView(e);box.addView(tipo);
+  if(data!=null){nombre.setText(String.valueOf(data.get("nombre")));categoria.setText(String.valueOf(data.get("categoria")));precio.setText(String.valueOf(data.get("precio")));existencia.setText(String.valueOf(data.get("existencia")));unidad.setText(String.valueOf(data.get("unidadMedida")));foto.setText(data.get("foto")==null?"":String.valueOf(data.get("foto")));tipo.setSelection("peso".equals(data.get("tipoExistencia"))?1:0);}
+  new AlertDialog.Builder(this).setTitle(id==null?"Nuevo producto":"Editar producto").setView(box).setPositiveButton("Guardar",(a,w)->guardar(id)).setNegativeButton("Cancelar",null).show();
+ }
+ private void guardar(String id){try{String n=nombre.getText().toString().trim(),cat=categoria.getText().toString().trim(),u=unidad.getText().toString().trim();double p=Double.parseDouble(precio.getText().toString().replace(',','.')),ex=Double.parseDouble(existencia.getText().toString().replace(',','.'));if(n.isEmpty()||p<0||ex<0||!Double.isFinite(p)||!Double.isFinite(ex))throw new IllegalArgumentException("Revisa nombre, precio y existencia.");String t=tipo.getSelectedItem().toString();if("unidad".equals(t)&&ex!=Math.floor(ex))throw new IllegalArgumentException("Los productos por unidad deben tener existencia entera.");Map<String,Object> m=new HashMap<>();m.put("nombre",n);m.put("categoria",cat);m.put("precio",p);m.put("existencia",ex);m.put("tipoExistencia",t);m.put("unidadMedida",u.isEmpty()?("peso".equals(t)?"kg":"unidad"):u);m.put("foto",foto.getText().toString().trim());m.put("activo",true);if(id==null)db.collection("productos").add(m).addOnSuccessListener(r->cargar()).addOnFailureListener(e->toast(e.getMessage()));else db.collection("productos").document(id).update(m).addOnSuccessListener(r->cargar()).addOnFailureListener(e->toast(e.getMessage()));}catch(Exception e){toast(e.getMessage()==null?"Datos inválidos":e.getMessage());}}
+ private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_LONG).show();}
+}
