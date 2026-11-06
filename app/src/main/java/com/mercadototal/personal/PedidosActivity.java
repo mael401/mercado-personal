@@ -238,42 +238,66 @@ public class PedidosActivity extends AppCompatActivity {
     // ---------- Exportar a Excel ----------
 
     private void exportar() {
-        if (visibles.isEmpty()) {
-            Toast.makeText(this, "No hay pedidos para exportar.", Toast.LENGTH_SHORT).show();
+        aExportar = new ArrayList<>();
+        for (Pedido p : visibles) if ("entregado".equals(p.estado)) aExportar.add(p);
+        if (aExportar.isEmpty()) {
+            Toast.makeText(this, "No hay pedidos entregados para incluir en el informe.", Toast.LENGTH_LONG).show();
             return;
         }
-        aExportar = new ArrayList<>(visibles);
         String fecha = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
-        guardar.launch("pedidos_" + fecha + ".xlsx");
+        guardar.launch("ventas_domicilio_" + fecha + ".xlsx");
     }
 
-    private String nz(String s) {
-        return s == null ? "" : s;
-    }
+    private String nz(String s) { return s == null ? "" : s; }
 
     private void escribirExcel(android.net.Uri uri) {
         try {
             List<Object[]> filas = new ArrayList<>();
-            filas.add(new Object[]{"Fecha", "Cliente", "Teléfono", "Dirección", "Productos",
-                "Cantidad de productos", "Estado", "Repartidor", "Total"});
-            double total = 0;
-            long unidades = 0;
+            Map<String, double[]> porProducto = new java.util.TreeMap<>();
+            Map<String, Double> porDia = new java.util.TreeMap<>();
+            double totalGeneral = 0;
+            filas.add(new Object[]{"DETALLE DE VENTAS A DOMICILIO"});
+            filas.add(new Object[]{"Fecha", "Pedido", "Cliente", "Teléfono", "Dirección",
+                "Producto", "Cantidad", "Unidad", "Precio unitario (CUP)", "Recaudado (CUP)"});
             for (Pedido p : aExportar) {
-                filas.add(new Object[]{Fmt.fecha(p.fecha), nz(p.clienteNombre), nz(p.telefono),
-                    nz(p.direccion), p.resumen(", "), p.unidades(), Fmt.estadoBonito(p.estado),
-                    nz(p.repartidorNombre), p.total});
-                if (!"cancelado".equals(p.estado)) {
-                    total += p.total;
-                    unidades += p.unidades();
+                String dia = p.fecha == null ? "Sin fecha" :
+                    new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(p.fecha);
+                for (Pedido.Linea l : p.lineas) {
+                    double importe = l.precio * l.cantidad;
+                    String unidad = nz(l.unidadMedida);
+                    filas.add(new Object[]{dia, p.id, nz(p.clienteNombre), nz(p.telefono),
+                        nz(p.direccion), nz(l.nombre), l.cantidad, unidad, l.precio, importe});
+                    String key = nz(l.nombre) + " (" + unidad + ")";
+                    double[] agg = porProducto.get(key);
+                    if (agg == null) { agg = new double[]{0, 0}; porProducto.put(key, agg); }
+                    agg[0] += l.cantidad;
+                    agg[1] += importe;
+                    totalGeneral += importe;
                 }
+                porDia.put(dia, (porDia.containsKey(dia) ? porDia.get(dia) : 0d) + p.total);
             }
-            filas.add(new Object[]{"TOTAL (sin cancelados)", "", "", "", "", unidades, "", "", total});
-
-            byte[] datos = XlsxWriter.crear("Pedidos", filas);
+            filas.add(new Object[]{""});
+            filas.add(new Object[]{"RESUMEN POR PRODUCTO"});
+            filas.add(new Object[]{"Producto", "Cantidad vendida", "Unidad", "Recaudado (CUP)"});
+            for (Map.Entry<String, double[]> e : porProducto.entrySet()) {
+                String k = e.getKey();
+                int cut = k.lastIndexOf(" (");
+                String nombreProducto = cut < 0 ? k : k.substring(0, cut);
+                String unidad = cut < 0 ? "" : k.substring(cut + 2, k.length() - 1);
+                filas.add(new Object[]{nombreProducto, e.getValue()[0], unidad, e.getValue()[1]});
+            }
+            filas.add(new Object[]{"TOTAL GENERAL", "", "", totalGeneral});
+            filas.add(new Object[]{""});
+            filas.add(new Object[]{"RESUMEN DIARIO"});
+            filas.add(new Object[]{"Fecha", "Total vendido (CUP)"});
+            for (Map.Entry<String, Double> e : porDia.entrySet())
+                filas.add(new Object[]{e.getKey(), e.getValue()});
+            byte[] datos = XlsxWriter.crear("Ventas domicilio", filas);
             try (OutputStream os = getContentResolver().openOutputStream(uri)) {
+                if (os == null) throw new java.io.IOException("No se pudo abrir el archivo de destino.");
                 os.write(datos);
             }
-            Toast.makeText(this, "Excel guardado.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Excel de ventas entregadas guardado.", Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             Toast.makeText(this, "No se pudo guardar el Excel: " + e.getMessage(),
                 Toast.LENGTH_LONG).show();
