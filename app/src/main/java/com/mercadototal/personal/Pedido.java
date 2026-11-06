@@ -17,8 +17,8 @@ public class Pedido {
     public Date fecha;
     public List<Linea> lineas = new ArrayList<>();
 
-    public long unidades() {
-        long u = 0;
+    public double unidades() {
+        double u = 0;
         for (Linea l : lineas) u += l.cantidad;
         return u;
     }
