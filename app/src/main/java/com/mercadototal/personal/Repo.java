@@ -272,6 +272,8 @@ public class Repo {
                 }
                 Object exObj = producto.get("existencia");
                 double existencia = exObj instanceof Number ? ((Number) exObj).doubleValue() : 0;
+                String tipoProducto = producto.getString("tipoExistencia");
+                if (tipoProducto == null) tipoProducto = "unidad";
                 if (descontar) {
                     if (!Boolean.TRUE.equals(producto.get("activo"))) {
                         throw new FirebaseFirestoreException("Producto inactivo: " + producto.getString("nombre"),
@@ -284,7 +286,7 @@ public class Repo {
                     }
                     double precio = ((Number) precioObj).doubleValue();
                     if (!Double.isFinite(precio) || precio < 0 || !Double.isFinite(existencia) || existencia < cantidad
-                            || ("unidad".equals(producto.getString("tipoExistencia")) && cantidad != Math.floor(cantidad))) {
+                            || ("unidad".equals(tipoProducto) && cantidad != Math.floor(cantidad))) {
                         throw new FirebaseFirestoreException("Precio o existencia inválida para " + producto.getString("nombre"),
                             FirebaseFirestoreException.Code.ABORTED);
                     }
