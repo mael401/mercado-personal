@@ -35,7 +35,7 @@ public class PedidosActivity extends AppCompatActivity {
     private final List<Pedido> visibles = new ArrayList<>();
     private List<Pedido> aExportar = new ArrayList<>();
     private PedidoAdapter adapter;
-    private ListenerRegistration registro;
+    private ListenerRegistration registro, tasaRegistro;
 
     private String nombre = "";
     private boolean esAdmin = false;
@@ -66,6 +66,12 @@ public class PedidosActivity extends AppCompatActivity {
         tvSaludo = findViewById(R.id.tvSaludo);
         tvResumen = findViewById(R.id.tvResumen);
         tvEstado = findViewById(R.id.tvEstado);
+        TextView tvTasa = findViewById(R.id.tvTasa);
+        tasaRegistro = com.google.firebase.firestore.FirebaseFirestore.getInstance().collection("configuracion").document("tasaUSD").addSnapshotListener((d,e) -> {
+            if (e != null) { tvTasa.setText("No se pudo consultar la tasa USD"); return; }
+            Object valor = d == null ? null : d.get("valor");
+            tvTasa.setText(valor instanceof Number ? "Tasa vigente: 1 USD = " + Fmt.dinero(((Number)valor).doubleValue()) + " CUP" : "Tasa USD pendiente de configurar");
+        });
         spFiltro = findViewById(R.id.spFiltro);
         btnExportar = findViewById(R.id.btnExportar);
         RecyclerView rv = findViewById(R.id.rvPedidos);
@@ -123,6 +129,7 @@ public class PedidosActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         if (registro != null) registro.remove();
+        if (tasaRegistro != null) tasaRegistro.remove();
     }
 
     private void configurarFiltro() {
