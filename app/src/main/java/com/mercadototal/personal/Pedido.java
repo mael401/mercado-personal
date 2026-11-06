@@ -7,7 +7,7 @@ import java.util.List;
 public class Pedido {
 
     public static class Linea {
-        public String nombre;
+        public String nombre, unidadMedida;
         public double precio;
         public double cantidad;
     }
