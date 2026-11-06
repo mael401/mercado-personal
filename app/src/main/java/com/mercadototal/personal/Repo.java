@@ -135,6 +135,7 @@ public class Repo {
                     for (Map<String, Object> m : its) {
                         Pedido.Linea l = new Pedido.Linea();
                         l.nombre = String.valueOf(m.get("nombre"));
+                        l.unidadMedida = m.get("unidadMedida") == null ? "" : String.valueOf(m.get("unidadMedida"));
                         Object pr = m.get("precio");
                         l.precio = pr instanceof Number ? ((Number) pr).doubleValue() : 0;
                         Object c = m.get("cantidad");
@@ -282,7 +283,7 @@ public class Repo {
                             FirebaseFirestoreException.Code.FAILED_PRECONDITION);
                     }
                     double precio = ((Number) precioObj).doubleValue();
-                    if (!Double.isFinite(precio) || precio < 0 || existencia < cantidad) {
+                    if (!Double.isFinite(precio) || precio < 0 || !Double.isFinite(existencia) || existencia < cantidad\n                            || ("unidad".equals(producto.getString("tipoExistencia")) && cantidad != Math.floor(cantidad))) {
                         throw new FirebaseFirestoreException("Precio o existencia inválida para " + producto.getString("nombre"),
                             FirebaseFirestoreException.Code.ABORTED);
                     }
@@ -293,6 +294,7 @@ public class Repo {
                     linea.put("nombre", nombre);
                     linea.put("precio", precio);
                     linea.put("cantidad", cantidad);
+                    linea.put("unidadMedida", producto.getString("unidadMedida") == null ? ("peso".equals(producto.getString("tipoExistencia")) ? "kg" : "unidad") : producto.getString("unidadMedida"));
                     itemsCanonicos.add(linea);
                     totalCanonico += precio * cantidad;
                     tr.update(refs.get(i), "existencia", existencia - cantidad);
