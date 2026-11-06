@@ -203,7 +203,7 @@ public class Repo {
             boolean cancelarPendiente = admin && "pendiente".equals(actual) && "cancelado".equals(nuevo);
             boolean cancelarConfirmado = admin && "confirmado".equals(actual) && "cancelado".equals(nuevo);
             boolean cancelarEnCamino = admin && "en camino".equals(actual) && "cancelado".equals(nuevo);
-            boolean adminIniciaEntrega = admin && "confirmado".equals(actual) && "en camino".equals(nuevo);
+            boolean adminIniciaEntrega = false;
             boolean repartidorAcepta = repartidor && "confirmado".equals(actual)
                 && "en camino".equals(nuevo) && (asignadoA == null || asignadoA.isEmpty());
             boolean repartidorEntrega = repartidor && "en camino".equals(actual)
@@ -220,7 +220,7 @@ public class Repo {
             boolean descontar = confirmar;
             boolean reponer = cancelarConfirmado || cancelarEnCamino;
             Map<String, Double> cantidades = new LinkedHashMap<>();
-            Map<String, String> nombres = new LinkedHashMap<>();
+            
             Object bruto = pedido.get("items");
             if (descontar || reponer) {
                 if (!(bruto instanceof List) || ((List<?>) bruto).isEmpty()) {
