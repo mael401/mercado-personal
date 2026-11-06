@@ -19,7 +19,8 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".UsuariosActivity" android:exported="false" />\n        <activity android:name=".ProductosActivity" android:exported="false" />
+        <activity android:name=".UsuariosActivity" android:exported="false" />
+        <activity android:name=".ProductosActivity" android:exported="false" />
 
         <activity
             android:name=".PedidosActivity"
