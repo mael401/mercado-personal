@@ -1,6 +1,13 @@
 package com.mercadototal.personal;
 
 import android.os.Bundle;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
+import android.util.Base64;
+import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
 import android.text.InputType;
 import android.view.View;
 import android.widget.*;
@@ -28,11 +35,11 @@ public class ProductosActivity extends AppCompatActivity {
   LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(20,0,20,0);
   nombre=campo("Nombre",InputType.TYPE_CLASS_TEXT);categoria=campo("Categoría",InputType.TYPE_CLASS_TEXT);precio=campo("Precio en CUP",InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);existencia=campo("Existencia (kg/unidades)",InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);unidad=campo("Unidad (kg, g, unidad...)",InputType.TYPE_CLASS_TEXT);foto=campo("Foto Base64 (opcional)",InputType.TYPE_CLASS_TEXT);
   tipo=new Spinner(this);tipo.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"unidad","peso"}));
-  for(EditText e:new EditText[]{nombre,categoria,precio,existencia,unidad,foto})box.addView(e);box.addView(tipo);
+  for(EditText e:new EditText[]{nombre,categoria,precio,existencia,unidad,foto})box.addView(e);Button elegirFoto=new Button(this);elegirFoto.setText("Seleccionar foto del producto");elegirFoto.setOnClickListener(v->{Intent pick=new Intent(Intent.ACTION_GET_CONTENT);pick.setType("image/*");startActivityForResult(Intent.createChooser(pick,"Seleccionar imagen"),420);});box.addView(elegirFoto);box.addView(tipo);
   if(data!=null){nombre.setText(String.valueOf(data.get("nombre")));categoria.setText(String.valueOf(data.get("categoria")));precio.setText(String.valueOf(data.get("precio")));existencia.setText(String.valueOf(data.get("existencia")));unidad.setText(String.valueOf(data.get("unidadMedida")));foto.setText(data.get("foto")==null?"":String.valueOf(data.get("foto")));tipo.setSelection("peso".equals(data.get("tipoExistencia"))?1:0);}
   new AlertDialog.Builder(this).setTitle(id==null?"Nuevo producto":"Editar producto").setView(box).setPositiveButton("Guardar",(a,w)->guardar(id)).setNegativeButton("Cancelar",null).show();
  }
  private void guardar(String id){try{String n=nombre.getText().toString().trim(),cat=categoria.getText().toString().trim(),u=unidad.getText().toString().trim();double p=Double.parseDouble(precio.getText().toString().replace(',','.')),ex=Double.parseDouble(existencia.getText().toString().replace(',','.'));if(n.isEmpty()||p<0||ex<0||!Double.isFinite(p)||!Double.isFinite(ex))throw new IllegalArgumentException("Revisa nombre, precio y existencia.");String t=tipo.getSelectedItem().toString();if("unidad".equals(t)&&ex!=Math.floor(ex))throw new IllegalArgumentException("Los productos por unidad deben tener existencia entera.");Map<String,Object> m=new HashMap<>();m.put("nombre",n);m.put("categoria",cat);m.put("precio",p);m.put("existencia",ex);m.put("tipoExistencia",t);m.put("unidadMedida",u.isEmpty()?("peso".equals(t)?"kg":"unidad"):u);m.put("foto",foto.getText().toString().trim());m.put("activo",true);if(id==null)db.collection("productos").add(m).addOnSuccessListener(r->cargar()).addOnFailureListener(e->toast(e.getMessage()));else db.collection("productos").document(id).update(m).addOnSuccessListener(r->cargar()).addOnFailureListener(e->toast(e.getMessage()));}catch(Exception e){toast(e.getMessage()==null?"Datos inválidos":e.getMessage());}}
- @Override protected void onDestroy(){if(tasaRegistro!=null)tasaRegistro.remove();super.onDestroy();}
+ @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){super.onActivityResult(requestCode,resultCode,data);if(requestCode==420&&resultCode==RESULT_OK&&data!=null&&data.getData()!=null){try{Uri uri=data.getData();BitmapFactory.Options bounds=new BitmapFactory.Options();bounds.inJustDecodeBounds=true;try(InputStream in=getContentResolver().openInputStream(uri)){BitmapFactory.decodeStream(in,null,bounds);}int sample=1;while(bounds.outWidth/sample>1000||bounds.outHeight/sample>1000)sample*=2;BitmapFactory.Options opts=new BitmapFactory.Options();opts.inSampleSize=sample;Bitmap bitmap;try(InputStream in=getContentResolver().openInputStream(uri)){bitmap=BitmapFactory.decodeStream(in,null,opts);}if(bitmap==null)throw new Exception("Imagen no válida");ByteArrayOutputStream out=new ByteArrayOutputStream();bitmap.compress(Bitmap.CompressFormat.JPEG,78,out);bitmap.recycle();String b64=Base64.encodeToString(out.toByteArray(),Base64.NO_WRAP);if(b64.length()>850000)throw new Exception("La imagen sigue siendo demasiado grande; selecciona otra.");foto.setText(b64);toast("Foto preparada correctamente.");}catch(Exception e){toast("No se pudo cargar la foto: "+e.getMessage());}}}\n @Override protected void onDestroy(){if(tasaRegistro!=null)tasaRegistro.remove();super.onDestroy();}
  private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_LONG).show();}
 }
