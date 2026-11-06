@@ -70,8 +70,8 @@ public class LoginActivity extends AppCompatActivity {
             public void ok(Map<String, Object> p) {
                 Object rol = p.get("rol");
                 boolean activa = !Boolean.FALSE.equals(p.get("activo"));
-                if (activa && ("admin".equals(rol) || "repartidor".equals(rol))) {
-                    startActivity(new Intent(LoginActivity.this, PedidosActivity.class));
+                if (activa && ("admin".equals(rol) || "repartidor".equals(rol) || "almacenero".equals(rol))) {
+                    startActivity(new Intent(LoginActivity.this, "almacenero".equals(rol) ? ProductosActivity.class : PedidosActivity.class));
                     finish();
                 } else {
                     auth.signOut();
