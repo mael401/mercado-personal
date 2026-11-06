@@ -138,7 +138,7 @@ public class Repo {
                         Object pr = m.get("precio");
                         l.precio = pr instanceof Number ? ((Number) pr).doubleValue() : 0;
                         Object c = m.get("cantidad");
-                        l.cantidad = c instanceof Number ? ((Number) c).longValue() : 0;
+                        l.cantidad = c instanceof Number ? ((Number) c).doubleValue() : 0;
                         p.lineas.add(l);
                     }
                 }
@@ -218,7 +218,7 @@ public class Repo {
 
             boolean descontar = confirmar;
             boolean reponer = cancelarConfirmado || cancelarEnCamino;
-            Map<String, Long> cantidades = new LinkedHashMap<>();
+            Map<String, Double> cantidades = new LinkedHashMap<>();
             Map<String, String> nombres = new LinkedHashMap<>();
             Object bruto = pedido.get("items");
             if (descontar || reponer) {
@@ -235,13 +235,13 @@ public class Repo {
                     Object idObj = item.get("productoId");
                     Object cantObj = item.get("cantidad");
                     String id = idObj == null ? "" : idObj.toString().trim();
-                    long cantidad = cantObj instanceof Number ? ((Number) cantObj).longValue() : 0;
-                    if (id.isEmpty() || cantidad <= 0 || cantidad > 1000) {
+                    double cantidad = cantObj instanceof Number ? ((Number) cantObj).doubleValue() : 0;
+                    if (id.isEmpty() || !Double.isFinite(cantidad) || cantidad <= 0 || cantidad > 1000) {
                         throw new FirebaseFirestoreException("Producto o cantidad inválida.",
                             FirebaseFirestoreException.Code.INVALID_ARGUMENT);
                     }
-                    long acumulada = cantidades.containsKey(id) ? cantidades.get(id) : 0;
-                    if (acumulada > 10000 - cantidad) {
+                    double acumulada = cantidades.containsKey(id) ? cantidades.get(id) : 0;
+                    if (acumulada + cantidad > 10000.000001d) {
                         throw new FirebaseFirestoreException("Cantidad acumulada fuera de rango.",
                             FirebaseFirestoreException.Code.INVALID_ARGUMENT);
                     }
@@ -264,13 +264,13 @@ public class Repo {
             for (int i = 0; i < refs.size(); i++) {
                 DocumentSnapshot producto = productos.get(i);
                 String id = refs.get(i).getId();
-                long cantidad = cantidades.get(id);
+                double cantidad = cantidades.get(id);
                 if (!producto.exists()) {
                     throw new FirebaseFirestoreException("Producto inexistente: " + id,
                         FirebaseFirestoreException.Code.NOT_FOUND);
                 }
                 Object exObj = producto.get("existencia");
-                long existencia = exObj instanceof Number ? ((Number) exObj).longValue() : 0;
+                double existencia = exObj instanceof Number ? ((Number) exObj).doubleValue() : 0;
                 if (descontar) {
                     if (!Boolean.TRUE.equals(producto.get("activo"))) {
                         throw new FirebaseFirestoreException("Producto inactivo: " + producto.getString("nombre"),
@@ -297,7 +297,7 @@ public class Repo {
                     totalCanonico += precio * cantidad;
                     tr.update(refs.get(i), "existencia", existencia - cantidad);
                 } else if (reponer) {
-                    if (existencia > Long.MAX_VALUE - cantidad) {
+                    if (existencia + cantidad > 1000000000d) {
                         throw new FirebaseFirestoreException("Desbordamiento al reponer inventario.",
                             FirebaseFirestoreException.Code.ABORTED);
                     }
@@ -316,6 +316,9 @@ public class Repo {
             if (confirmar) {
                 cambios.put("items", itemsCanonicos);
                 cambios.put("total", totalCanonico);
+                Object tasaPedido = pedido.get("tasaUSD");
+                double tasa = tasaPedido instanceof Number ? ((Number)tasaPedido).doubleValue() : 0;
+                if (tasa > 0) cambios.put("totalUSD", totalCanonico / tasa);
             }
             tr.update(pedidoRef, cambios);
             return null;
