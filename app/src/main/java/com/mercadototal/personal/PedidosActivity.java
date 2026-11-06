@@ -18,6 +18,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.ListenerRegistration;
 import java.io.OutputStream;
@@ -61,13 +62,28 @@ public class PedidosActivity extends AppCompatActivity {
         }
 
         setContentView(R.layout.activity_pedidos);
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
         tvSaludo = findViewById(R.id.tvSaludo);
         tvResumen = findViewById(R.id.tvResumen);
         tvEstado = findViewById(R.id.tvEstado);
         spFiltro = findViewById(R.id.spFiltro);
         btnExportar = findViewById(R.id.btnExportar);
-        Button btnSalir = findViewById(R.id.btnSalir);
         RecyclerView rv = findViewById(R.id.rvPedidos);
+
+        toolbar.inflateMenu(R.menu.menu_personal);
+        toolbar.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.accion_clave) {
+                Cuenta.cambiarPassword(this);
+                return true;
+            }
+            if (id == R.id.accion_salir) {
+                FirebaseAuth.getInstance().signOut();
+                irALogin();
+                return true;
+            }
+            return false;
+        });
 
         adapter = new PedidoAdapter();
         rv.setLayoutManager(new LinearLayoutManager(this));
@@ -75,10 +91,6 @@ public class PedidosActivity extends AppCompatActivity {
 
         btnExportar.setVisibility(View.GONE);
         btnExportar.setOnClickListener(v -> exportar());
-        btnSalir.setOnClickListener(v -> {
-            FirebaseAuth.getInstance().signOut();
-            irALogin();
-        });
 
         tvSaludo.setText("Cargando...");
         Repo.perfil(new Repo.Callback<Map<String, Object>>() {
@@ -86,7 +98,8 @@ public class PedidosActivity extends AppCompatActivity {
             public void ok(Map<String, Object> p) {
                 Object rol = p.get("rol");
                 boolean admin = "admin".equals(rol);
-                if (!admin && !"repartidor".equals(rol)) {
+                boolean activa = !Boolean.FALSE.equals(p.get("activo"));
+                if (!activa || (!admin && !"repartidor".equals(rol))) {
                     FirebaseAuth.getInstance().signOut();
                     irALogin();
                     return;
@@ -94,7 +107,7 @@ public class PedidosActivity extends AppCompatActivity {
                 esAdmin = admin;
                 Object n = p.get("nombre");
                 nombre = n == null ? "" : n.toString();
-                tvSaludo.setText("Hola, " + nombre + " (" + (esAdmin ? "Administrador" : "Repartidor") + ")");
+                tvSaludo.setText("Hola, " + nombre + "  ·  " + (esAdmin ? "Administrador" : "Repartidor"));
                 btnExportar.setVisibility(esAdmin ? View.VISIBLE : View.GONE);
                 configurarFiltro();
                 escuchar();
@@ -178,8 +191,8 @@ public class PedidosActivity extends AppCompatActivity {
         if ("Cancelados".equals(op)) {
             tvResumen.setText(visibles.size() + " pedidos cancelados");
         } else {
-            tvResumen.setText(visibles.size() + " pedidos · " + unidades
-                + " productos · Total: " + Fmt.dinero(total));
+            tvResumen.setText(visibles.size() + " pedidos  ·  " + unidades
+                + " productos  ·  Total: " + Fmt.dinero(total));
         }
         tvEstado.setText("No hay pedidos en esta vista.");
         tvEstado.setVisibility(visibles.isEmpty() ? View.VISIBLE : View.GONE);
@@ -271,15 +284,17 @@ public class PedidosActivity extends AppCompatActivity {
     class PedidoAdapter extends RecyclerView.Adapter<PedidoAdapter.VH> {
 
         class VH extends RecyclerView.ViewHolder {
-            TextView cliente, direccion, productos, total, estado;
+            TextView fecha, chip, cliente, direccion, productos, total, repartidor;
             Button btnA, btnB;
             VH(View v) {
                 super(v);
+                fecha = v.findViewById(R.id.tvFecha);
+                chip = v.findViewById(R.id.tvChip);
                 cliente = v.findViewById(R.id.tvCliente);
                 direccion = v.findViewById(R.id.tvDireccion);
                 productos = v.findViewById(R.id.tvProductos);
                 total = v.findViewById(R.id.tvTotal);
-                estado = v.findViewById(R.id.tvEstadoPedido);
+                repartidor = v.findViewById(R.id.tvRepartidor);
                 btnA = v.findViewById(R.id.btnA);
                 btnB = v.findViewById(R.id.btnB);
             }
@@ -296,15 +311,19 @@ public class PedidosActivity extends AppCompatActivity {
         public void onBindViewHolder(@NonNull VH h, int pos) {
             Pedido p = visibles.get(pos);
 
+            h.fecha.setText(Fmt.fecha(p.fecha));
+            h.chip.setText(Fmt.estadoBonito(p.estado));
+            h.chip.setTextColor(Fmt.colorEstado(p.estado));
+
             String tel = nz(p.telefono);
             h.cliente.setText(nz(p.clienteNombre) + (tel.isEmpty() ? "" : "  ·  " + tel));
-            h.direccion.setText("Dirección: " + nz(p.direccion));
+            h.direccion.setText(nz(p.direccion));
             h.productos.setText(p.resumen("\n"));
             h.total.setText("A cobrar: " + Fmt.dinero(p.total));
 
             String rep = nz(p.repartidorNombre);
-            h.estado.setText(Fmt.fecha(p.fecha) + "  ·  " + Fmt.estadoBonito(p.estado)
-                + (rep.isEmpty() ? "" : "  ·  Repartidor: " + rep));
+            h.repartidor.setText(rep.isEmpty() ? "" : "Repartidor: " + rep);
+            h.repartidor.setVisibility(rep.isEmpty() ? View.GONE : View.VISIBLE);
 
             h.btnA.setVisibility(View.GONE);
             h.btnB.setVisibility(View.GONE);
@@ -317,14 +336,15 @@ public class PedidosActivity extends AppCompatActivity {
                         confirmar("¿Cancelar este pedido?", () -> cambiar(p, "cancelado")));
                 }
             } else if ("confirmado".equals(e)) {
-                mostrarBoton(h.btnA, "En camino", v -> cambiar(p, "en camino"));
+                mostrarBoton(h.btnA, esAdmin ? "En camino" : "Aceptar pedido",
+                    v -> cambiar(p, "en camino"));
                 if (esAdmin) {
                     mostrarBoton(h.btnB, "Cancelar", v -> confirmar(
                         "¿Cancelar este pedido? Las existencias volverán al inventario.",
                         () -> cambiar(p, "cancelado")));
                 }
             } else if ("en camino".equals(e)) {
-                mostrarBoton(h.btnA, "Entregado", v -> cambiar(p, "entregado"));
+                mostrarBoton(h.btnA, "Marcar entregado", v -> cambiar(p, "entregado"));
                 if (esAdmin) {
                     mostrarBoton(h.btnB, "Cancelar", v -> confirmar(
                         "¿Cancelar este pedido? Las existencias volverán al inventario.",
