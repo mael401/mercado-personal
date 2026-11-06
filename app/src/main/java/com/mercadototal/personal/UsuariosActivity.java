@@ -1,0 +1,19 @@
+package com.mercadototal.personal;
+import android.os.Bundle;
+import android.text.InputType;
+import android.view.View;
+import android.widget.*;
+import androidx.appcompat.app.*;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.*;
+import com.google.firebase.functions.FirebaseFunctions;
+import java.util.*;
+public class UsuariosActivity extends AppCompatActivity{
+ FirebaseFirestore db; LinearLayout list; ListenerRegistration reg;
+ EditText field(String hint,int type){EditText e=new EditText(this);e.setHint(hint);e.setInputType(type);return e;}
+ @Override public void onCreate(Bundle b){super.onCreate(b);db=FirebaseFirestore.getInstance();LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(16,8,16,8);setContentView(root);Button add=new Button(this);add.setText("Crear cuenta de personal");root.addView(add);add.setOnClickListener(v->create());list=new LinearLayout(this);list.setOrientation(1);ScrollView s=new ScrollView(this);s.addView(list);root.addView(s,new LinearLayout.LayoutParams(-1,0,1));db.collection("users").document(FirebaseAuth.getInstance().getUid()).get().addOnSuccessListener(d->{if(!d.exists()||!"admin".equals(d.getString("rol"))||Boolean.FALSE.equals(d.get("activo"))){finish();return;}reg=db.collection("users").addSnapshotListener((q,e)->{if(q==null)return;list.removeAllViews();for(DocumentSnapshot u:q){TextView t=new TextView(this);t.setText(u.getString("nombre")+" · "+u.getString("email")+" · "+u.getString("rol")+" · "+(Boolean.FALSE.equals(u.get("activo"))?"inactivo":"activo"));list.addView(t);Button edit=new Button(this);edit.setText("Modificar rol/estado");edit.setOnClickListener(v->edit(u));list.addView(edit);}});});}
+ void create(){LinearLayout box=new LinearLayout(this);box.setOrientation(1);EditText n=field("Nombre",InputType.TYPE_CLASS_TEXT),e=field("Correo",InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS),p=field("Contraseña temporal (8+)",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);Spinner role=new Spinner(this);role.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"repartidor","almacenero","admin"}));box.addView(n);box.addView(e);box.addView(p);box.addView(role);new AlertDialog.Builder(this).setTitle("Nueva cuenta").setView(box).setPositiveButton("Crear",(d,w)->{Map<String,Object> m=new HashMap<>();m.put("nombre",n.getText().toString());m.put("email",e.getText().toString());m.put("password",p.getText().toString());m.put("rol",role.getSelectedItem().toString());FirebaseFunctions.getInstance("us-central1").getHttpsCallable("crearUsuarioPersonal").call(m).addOnSuccessListener(x->toast("Cuenta creada.")).addOnFailureListener(x->toast(x.getMessage()));}).setNegativeButton("Cancelar",null).show();}
+ void edit(DocumentSnapshot u){String[] roles={"cliente","admin","repartidor","almacenero"};Spinner sp=new Spinner(this);sp.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,roles));for(int i=0;i<roles.length;i++)if(roles[i].equals(u.getString("rol")))sp.setSelection(i);CheckBox active=new CheckBox(this);active.setText("Cuenta activa");active.setChecked(!Boolean.FALSE.equals(u.get("activo")));LinearLayout box=new LinearLayout(this);box.setOrientation(1);box.addView(sp);box.addView(active);new AlertDialog.Builder(this).setTitle("Actualizar usuario").setView(box).setPositiveButton("Guardar",(d,w)->{Map<String,Object> m=new HashMap<>();m.put("rol",sp.getSelectedItem().toString());m.put("activo",active.isChecked());db.collection("users").document(u.getId()).update(m).addOnSuccessListener(x->toast("Actualizado")).addOnFailureListener(x->toast(x.getMessage()));}).setNegativeButton("Cancelar",null).show();}
+ void toast(String s){Toast.makeText(this,s,Toast.LENGTH_LONG).show();}
+ @Override protected void onDestroy(){if(reg!=null)reg.remove();super.onDestroy();}
+}
