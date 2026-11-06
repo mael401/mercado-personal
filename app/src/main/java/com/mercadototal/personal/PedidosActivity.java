@@ -367,7 +367,7 @@ public class PedidosActivity extends AppCompatActivity {
                         confirmar("¿Cancelar este pedido?", () -> cambiar(p, "cancelado")));
                 }
             } else if ("confirmado".equals(e)) {
-                mostrarBoton(h.btnA, esAdmin ? "En camino" : "Aceptar pedido",
+                if (!esAdmin) mostrarBoton(h.btnA, "Aceptar pedido",
                     v -> cambiar(p, "en camino"));
                 if (esAdmin) {
                     mostrarBoton(h.btnB, "Cancelar", v -> confirmar(
