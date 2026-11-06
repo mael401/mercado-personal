@@ -73,7 +73,7 @@ public class PedidosActivity extends AppCompatActivity {
         toolbar.inflateMenu(R.menu.menu_personal);
         toolbar.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
-            if (id == R.id.accion_clave) {
+            if (id == R.id.accion_productos) { startActivity(new Intent(this, ProductosActivity.class)); return true; }\n            if (id == R.id.accion_usuarios && esAdmin) { startActivity(new Intent(this, UsuariosActivity.class)); return true; }\n            if (id == R.id.accion_clave) {
                 Cuenta.cambiarPassword(this);
                 return true;
             }
@@ -175,7 +175,7 @@ public class PedidosActivity extends AppCompatActivity {
         String op = opciones[spFiltro.getSelectedItemPosition()];
         visibles.clear();
         double total = 0;
-        long unidades = 0;
+        double unidades = 0;
         for (Pedido p : todos) {
             if (!esAdmin && "pendiente".equals(p.estado)) continue;
             if (!esAdmin && "cancelado".equals(p.estado)) continue;
