@@ -12,7 +12,7 @@ public class Pedido {
         public long cantidad;
     }
 
-    public String id, clienteNombre, telefono, direccion, estado, repartidorNombre;
+    public String id, clienteNombre, telefono, direccion, estado, repartidorId, repartidorNombre;
     public double total;
     public Date fecha;
     public List<Linea> lineas = new ArrayList<>();
