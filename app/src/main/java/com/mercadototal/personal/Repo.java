@@ -283,7 +283,8 @@ public class Repo {
                             FirebaseFirestoreException.Code.FAILED_PRECONDITION);
                     }
                     double precio = ((Number) precioObj).doubleValue();
-                    if (!Double.isFinite(precio) || precio < 0 || !Double.isFinite(existencia) || existencia < cantidad\n                            || ("unidad".equals(producto.getString("tipoExistencia")) && cantidad != Math.floor(cantidad))) {
+                    if (!Double.isFinite(precio) || precio < 0 || !Double.isFinite(existencia) || existencia < cantidad
+                            || ("unidad".equals(producto.getString("tipoExistencia")) && cantidad != Math.floor(cantidad))) {
                         throw new FirebaseFirestoreException("Precio o existencia inválida para " + producto.getString("nombre"),
                             FirebaseFirestoreException.Code.ABORTED);
                     }
