@@ -2,6 +2,9 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <item android:id="@+id/accion_productos" android:title="Productos e inventario" app:showAsAction="never" />
+    <item android:id="@+id/accion_usuarios" android:title="Administrar usuarios" app:showAsAction="never" />
+
     <item
         android:id="@+id/accion_clave"
         android:title="Cambiar contraseña"
