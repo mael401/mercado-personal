@@ -54,7 +54,8 @@ service cloud.firestore {
         && request.resource.data.precio >= 0
         && request.resource.data.existencia is number
         && request.resource.data.existencia >= 0
-        && request.resource.data.get('tipoExistencia', 'unidad') in ['unidad', 'peso'];
+        && request.resource.data.get('tipoExistencia', 'unidad') in ['unidad', 'peso']
+        && (request.resource.data.get('tipoExistencia', 'unidad') == 'peso' || request.resource.data.existencia % 1 == 0);
       allow update: if esAdmin() || (
         esAlmacenero()
         && request.resource.data.diff(resource.data).affectedKeys()
@@ -63,6 +64,8 @@ service cloud.firestore {
         && request.resource.data.precio >= 0
         && request.resource.data.existencia is number
         && request.resource.data.existencia >= 0
+        && request.resource.data.get('tipoExistencia', 'unidad') in ['unidad', 'peso']
+        && (request.resource.data.get('tipoExistencia', 'unidad') == 'peso' || request.resource.data.existencia % 1 == 0)
       );
       allow delete: if esAdmin();
     }
@@ -87,7 +90,6 @@ service cloud.firestore {
         && request.resource.data.total >= 0
         && request.resource.data.tasaUSD == get(/databases/$(database)/documents/configuracion/tasaUSD).data.valor
         && request.resource.data.totalUSD is number
-        && request.resource.data.totalUSD == request.resource.data.total / request.resource.data.tasaUSD
         && request.resource.data.tipoEntrega == 'domicilio'
         && request.resource.data.keys().hasOnly([
           'clienteId', 'clienteNombre', 'telefono', 'direccion', 'items', 'total', 'estado', 'fecha', 'tasaUSD', 'totalUSD', 'tipoEntrega'
