@@ -19,6 +19,8 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".ProductosActivity" android:exported="false" />
+
         <activity
             android:name=".PedidosActivity"
             android:exported="false" />
