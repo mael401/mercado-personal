@@ -6,7 +6,10 @@ on:
 
 concurrency:
   group: build
-  cancel-in-progress: true
+  cancel-in-progress: false
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -14,10 +17,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Aplicar actualización (si subiste un actualizacion*.zip)
+        run: |
+          shopt -s nullglob
+          aplicado=0
+          for z in actualizacion*.zip; do
+            echo "Aplicando $z ..."
+            unzip -o -q "$z"
+            rm "$z"
+            aplicado=1
+          done
+          if [ "$aplicado" = "1" ]; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+            git add -A
+            git commit -m "Aplicar actualización" || echo "Sin cambios"
+            git push
+          fi
+
       - name: Verificar archivos
         run: |
           echo "Archivos del repositorio:"
-          find . -path ./.git -prune -o -type f -print | sort | head -80
+          find . -path ./.git -prune -o -type f -print | sort | head -120
           test -f app/build.gradle || { echo "ERROR: FALTA app/build.gradle"; exit 1; }
           test -f app/google-services.json || { echo "ERROR: FALTA app/google-services.json"; exit 1; }
 
